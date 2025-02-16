@@ -1,0 +1,395 @@
+---
+title: "analysis"
+author: "Ryo Maekawa"
+date: "2025-02-10"
+output: html_document
+params:
+  reticulate.python: "" 
+---
+
+## install packages
+ 
+- Rの基本パッケージには含まれていないパッケージをインストールする
+
+```{r install packages}
+# # CRAN
+# install.packages("tidyverse")
+# 
+# # Bioconductor
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# BiocManager::install("topGO")
+# BiocManager::install("DESeq2")
+# BiocManager::install("clusterProfiler")
+# BiocManager::install("enrichplot")
+# BiocManager::install("org.Hs.eg.db")
+# BiocManager::install("Rgraphviz")
+# BiocManager::install("pheatmap")
+```
+
+# read libaray (read package)
+
+- 使用するパッケージを使うことを宣言する（ = 「ロードする」イメージ）
+
+```{r library}
+library(DESeq2) # DEG
+library(tidyverse) # utility
+library(clusterProfiler) # GOとKEGG用
+library(org.Hs.eg.db)  # ヒトのgenome data
+library(enrichplot) # plot用
+library(ggplot2) # plot用
+library(topGO) # GO用
+library(Rgraphviz) # topGOの可視化
+library(pheatmap)
+```
+
+# read data
+
+- データの読み込み
+
+```{r read data}
+
+df <- read.csv("./input_data/raw_count_data.csv", header  = T)
+df <- df[,-which(names(df)=="GO_info")]
+
+```
+
+# output用のデータ保存ディレクトリの作成
+
+```{r}
+  if (!dir.exists("output_data")) {
+    dir.create("output_data")
+  }
+```
+
+# Differentially expressed genes
+
+- DESeq2を用いたDEG（Differentially expressed genes: 発現変動遺伝子）の抽出
+- 最後に発現変動遺伝子のリストを出力
+
+```{r}
+# data preparation
+## 10列目から18列目のカウントデータを抽出
+count <- df[, 10:18]
+rownames(count) <- df$GeneID
+
+## サンプル名を確認
+colnames(count)
+
+## グループ情報を作成
+group <- data.frame(con = factor(c("A", "A", "A", "B", "B", "B", "C", "C", "C")))
+
+## カウントデータとグループ情報をDESeqDataSetに変換
+dds <- DESeqDataSetFromMatrix(countData = count, colData = group, design = ~ con)
+
+## DESeq2による差次的発現解析を実行
+dds <- DESeq(dds)
+
+## 結果を取得 & p valueでsorting
+res_B_vs_A <- results(dds, contrast = c("con", "B", "A"))
+resOrdered_B_vs_A <- res_B_vs_A[order(res_B_vs_A$pvalue),]
+
+res_C_vs_A <- results(dds, contrast = c("con", "C", "A"))
+resOrdered_C_vs_A <- res_C_vs_A[order(res_C_vs_A$pvalue),]
+
+res_C_vs_B <- results(dds, contrast = c("con", "C", "B"))
+resOrdered_C_vs_B <- res_C_vs_B[order(res_C_vs_B$pvalue),]
+
+## 結果を書き出し
+write.csv(as.data.frame(resOrdered_B_vs_A), "./output_data/DEG_res_B_vs_A.csv")
+write.csv(as.data.frame(resOrdered_C_vs_A), "./output_data/DEG_res_C_vs_A.csv")
+write.csv(as.data.frame(resOrdered_C_vs_B), "./output_data/DEG_res_C_vs_B.csv")
+
+```
+
+# get normalized data by DESeq
+
+- DESeq2を用いた正規化データの出力
+- DEGを計算するために使用した標準化データと、階層的クラスタリングや主成分分析を行うのに適した標準化データ（Log transformation data）の両方を出力する。
+
+```{r}
+
+# DEG計算に用いた標準化データの出力
+
+## calculate counts
+normalized_counts <- counts(dds, normalized=TRUE)
+
+## output
+write.csv(normalized_counts, "./output_data/normalized_counts.csv")
+
+# 階層的クラスタリングや主成分分析に適して標準化データの出力
+
+## calculate count
+rld <- rlog(dds) # 分散を安定化
+normalized_rld <- assay(rld) # 変換されたデータを取得
+
+## output
+write.csv(normalized_rld, "./output_data/rlog_transformed.csv")
+
+```
+
+# 階層的クラスタリング（hierarchical clustering）
+
+- Log transformation data（オブジェクト: normalized_rld）を用いる
+
+```{r}
+
+# 分散が0の行を削除 --> 全てのサンプルで発現が同一 or 0の遺伝子を削除
+non_zero_var <- apply(normalized_rld, 1, var) != 0
+filtered_rld <- normalized_rld[non_zero_var, ]
+
+
+# 計算コスト軽減のためdataを削減
+set.seed(123)  # 再現性確保のためのシード設定
+random_genes <- sample(rownames(filtered_rld), 5000)  
+selected_data <- filtered_rld[random_genes, ]  
+
+
+
+# 一般的な階層的クラスタリング --> ここまでできたら
+## サンプル間の距離を計算
+dist_matrix <- dist(t(selected_data))  # 転置してサンプルごとの距離を計算
+
+## 階層的クラスタリングを実行
+hc <- hclust(dist_matrix, method = "complete")  # ward.D average; scalingなし
+
+## plot
+plot(hc)
+
+
+# pheatmapを用いた階層的クラスタリング --> これができたら自由度高い!
+
+## 列のアノテーションデータの作成
+annotation_col <- data.frame(Agent_use = c("Control", 
+                                           "Control", 
+                                           "Control", 
+                                           "R62D_RD", 
+                                           "R62D_RD", 
+                                           "R62D_RD",
+                                           "cAMP",
+                                           "cAMP",
+                                           "cAMP"),
+                             any_status = c("status_A", 
+                                            "status_B", 
+                                            "status_C", 
+                                            "status_A",
+                                            "status_B",
+                                            "status_C",
+                                            "status_A",
+                                            "status_B",
+                                            "status_C"))
+  
+
+# 列名を行名に設定（= selected_dataの列名と対応（順番も））
+rownames(annotation_col) <- colnames(selected_data)
+
+# アノテーションの色設定（複数項目）
+annotation_colors <- list(
+  Agent_use  = c("Control" = "lightblue",  "R62D_RD" = "red",  "cAMP" = "lightgreen"),
+  any_status = c("status_A" = "lightblue", "status_B" = "red", "status_C" = "lightgreen")
+)
+
+# plot heatmap
+p <-  pheatmap(selected_data,
+           scale = "row",           # 遺伝子ごとにスケール調整
+           annotation_col = annotation_col,  # 複数アノテーションを適用
+           annotation_colors = annotation_colors,  # カラー設定
+           clustering_distance_rows = "euclidean",
+           clustering_distance_cols = "euclidean",
+           clustering_method = "complete",
+           show_rownames = FALSE)
+
+# pdfに保存
+ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
+```
+
+# principal component analysis
+- 	高次元の説明変数を低次元に圧縮する方法の一つ。遺伝子発現データに基づいて、サンプル間の分散を最もよく説明する新しい軸（主成分: Principal component）を抽出する。つまり、説明変数の数を減らし、データ構造を把握・可視化しやすくする。
+- 階層的クラスタリングと同様にLog transformation Dataを用いる。
+- DESeq2に組み込まれている関数`plotPCA`を用いるのが簡便。
+- 問題点として、`plotPCA`はPC1とPC2しか出力できない。
+- plotPCAは `prcomp`を内部で用いているので、自分で`prcomp`を実施すればPC3以降も可視できる。
+
+## DESeq2の組み込み関数`plotPCA`で実行
+
+```{r}
+
+# DESeq2にはplotPCA()関数が用意されている. データはrldを使用。
+## pca 結果
+pca_data <- plotPCA(rld, intgroup="con", returnData=TRUE) 
+print(pca_data)
+
+## pca plot
+p <- plotPCA(rld, intgroup="con")  +
+      theme_minimal()
+
+# pdfに保存
+ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
+
+```
+
+## PC3以降が見たいとき -> plotPCAが内部で実行している`prcomp`を手作業で行う。
+
+```{r}
+
+# 手作業でprcompを実行
+pca_res <- prcomp(t(normalized_rld)) # rlogデータでPCAを計算
+
+# 主成分ごとの寄与率を確認
+summary(pca_res)
+
+# 寄与率（importanceとして算出されている）を保存
+outdata <- summary(pca_res)$importance
+
+# 出力
+write.csv(outdata, file = "pca_res.csv")
+
+# PC3以降をプロット
+## 例 PC1 vs PC3
+p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$con)) +
+      geom_point(size=3) +
+      xlab(paste0("PC1: ", round(summary(pca_res)$importance[2, 1] * 100, 2), "% variance")) +
+      ylab(paste0("PC3: ", round(summary(pca_res)$importance[2, 3] * 100, 2), "% variance")) +
+      theme_minimal() +
+      ggtitle("PCA Plot (PC1 vs PC3)")
+
+# pdfに保存
+ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
+
+
+```
+
+
+# define function
+
+```{r plot_bar}
+# function
+plot_bar <- function(df, title){
+  title <- title
+  barplot(df, showCategory = 20, title = title) +
+  theme(
+    axis.text.x = element_text(size = 6),  # X軸ラベルのフォントサイズ
+    axis.text.y = element_text(size = 6),  # Y軸ラベルのフォントサイズ
+    axis.title.x = element_text(size = 10),  # X軸タイトルのフォントサイズ
+    axis.title.y = element_text(size = 10)   # Y軸タイトルのフォントサイズ
+  )
+}
+```
+
+
+# GO analysis
+
+## cluster profiler
+
+```{r cluster profiler}
+
+DEG_B_vs_A_up <- resOrdered_B_vs_A[which(resOrdered_B_vs_A$log2FoldChange > 0 & resOrdered_B_vs_A$padj < 0.01), ]
+
+ego_B_vs_A_up <- enrichGO(gene = rownames(DEG_B_vs_A_up),
+                      OrgDb = org.Hs.eg.db,
+                      keyType = "ENSEMBL",  # Ensembl IDを指定
+                      ont = "BP",  # Biological Process
+                      pAdjustMethod = "BH",
+                      qvalueCutoff = 0.01,
+                      readable = TRUE)
+
+# data output
+output_data <- as.data.frame(ego_B_vs_A_up)
+write.csv(output_data, "ego_B_vs_A_up.csv")
+
+# plot output
+p <- plot_bar(ego_B_vs_A_up, "GO_B_vs_A_up")
+
+# pdfに保存
+ggsave("./output_data/ego_B_vs_A_up_barplot.pdf", plot = p, width = 10, height = 8)
+
+```
+
+## topGO
+
+- cluster profilerと比較して、GOtermの抽出にweight01、classic、weightが選択できる。
+	• classic：
+  	•	全てのGO termを独立に評価する方法。
+  	•	階層構造を考慮しないため、冗長なGO termが多く出やすい。
+	•	elim：
+  	•	上流で有意なGO termを見つけたら、
+  	•	その遺伝子を下流の評価から除外し、冗長性を防ぐ。
+  	•	ただし、重要な遺伝子も除外されてしまうリスクがある。
+	•	weight：
+  	•	上流で有意なGO termが見つかると、
+  	•	下流のGO termのスコアを低くする（重みを調整）だけで、
+  	•	遺伝子は除外しないため、重要な遺伝子は残るが、冗長性は完全に排除されない。
+	•	weight01：
+  	•	elimとweightのバランス型。
+  	•	上流の有意性を考慮しつつ、
+  	•	完全に遺伝子を除外せず、重みも調整する。
+  	•	冗長性を抑えつつ、重要なGO termも維持できるため、最もよく使われる。
+  	
+```{r topGO}
+# 1. 遺伝子リストを作成
+geneList <- as.vector(rownames(DEG_B_vs_A_up))  # Ensembl IDの遺伝子リスト
+
+# 2. すべての遺伝子の背景リストを用意
+allGenes <- keys(org.Hs.eg.db, keytype = "ENSEMBL")  # すべてのヒト遺伝子ID
+
+# 3. topGO用にnamed vector形式に変換
+geneUniverse <- factor(as.integer(allGenes %in% geneList))
+names(geneUniverse) <- allGenes
+
+# 4. GOデータを準備
+GOdata <- new("topGOdata",
+              ontology = "BP",  # Biological Process
+              allGenes = geneUniverse,
+              geneSel = function(x) x == 1,
+              nodeSize = 10,  # 最低10個以上の遺伝子が含まれるGO termのみ解析
+              annot = annFUN.org, mapping = "org.Hs.eg.db", ID = "ENSEMBL")
+
+
+# 5. 解析を実行
+resultFisher <- runTest(GOdata, algorithm = "weight01", statistic = "fisher")
+
+# 6. すべてのGO termを取得
+allGOterms <- usedGO(GOdata)  # 使用された全てのGO termを取得
+
+# 7. すべてのp値を取得
+allPvals <- score(resultFisher)[allGOterms]
+
+# 8. p.adjust()でadjusted p valueを算出
+adjustedPvals <- p.adjust(allPvals, method = "BH")  # Benjamini-Hochberg法で補正
+
+# 9. 結果を集計（全GO termを含める）
+allRes <- GenTable(GOdata, 
+                   classicFisher = resultFisher, 
+                   orderBy = "classicFisher", topNodes = length(allGOterms))
+
+# 10. 補正後のp値を追加
+allRes$adjPval <- adjustedPvals[match(allRes$GO.ID, names(adjustedPvals))]
+
+head(allRes)
+
+# 8. 結果をCSVに保存
+write.csv(allRes, "./output_data/topGO_BP_B_vs_A.csv")
+
+# 9. 可視化（あんま使わない）
+showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = "all")  # 上位5つをGOツリー表示
+
+# 10. pdfに保存 ggsaveが使えない
+pdf("./output_data/topGO_B_vs_A_tree.pdf", width = 10, height = 8)  # PDFデバイスを開く
+showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = "all")
+dev.off()  # デバイスを閉じる
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
