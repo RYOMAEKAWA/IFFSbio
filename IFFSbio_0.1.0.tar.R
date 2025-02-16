@@ -49,7 +49,7 @@ usethis::use_data(test_data, overwrite = TRUE)
 devtools::document()
 
 
-# tar.gzにして配布
-devtools::build()
+# tar.gzにbuildディレクトリ内にパッケージを作成
+devtools::build(path = "./build")
 
 
