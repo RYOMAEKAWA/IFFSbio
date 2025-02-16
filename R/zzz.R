@@ -21,6 +21,10 @@
 }
 
 .onAttach <- function(libname, pkgname) {
+    #packageStartupMessage("Running setup for IFFSbio...")
+    copy_analysis()
+    copy_raw_count_data()
     data("test_data", package = pkgname)
+    #packageStartupMessage("Data files have been copied to the current working directory.")
     #message("test_data has been loaded.")
 }
