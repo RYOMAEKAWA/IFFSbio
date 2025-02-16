@@ -34,12 +34,12 @@ params:
 ```{r library}
 library(DESeq2) # DEG
 library(tidyverse) # utility
-library(clusterProfiler) # GO
+library(clusterProfiler) # GOとKEGG用
 library(org.Hs.eg.db)  # ヒトのgenome data
-library(enrichplot) # plot
-library(ggplot2) # plot
-library(topGO) # GO
-library(Rgraphviz) # topGO 可視化
+library(enrichplot) # plot用
+library(ggplot2) # plot用
+library(topGO) # GO用
+library(Rgraphviz) # topGOの可視化
 library(pheatmap)
 ```
 
@@ -49,9 +49,17 @@ library(pheatmap)
 
 ```{r read data}
 
-df <- read.csv("raw_count_data.csv", header  = T)
+df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 df <- df[,-which(names(df)=="GO_info")]
 
+```
+
+# output用のデータ保存ディレクトリの作成
+
+```{r}
+  if (!dir.exists("output_data")) {
+    dir.create("output_data")
+  }
 ```
 
 # Differentially expressed genes
@@ -88,9 +96,9 @@ res_C_vs_B <- results(dds, contrast = c("con", "C", "B"))
 resOrdered_C_vs_B <- res_C_vs_B[order(res_C_vs_B$pvalue),]
 
 ## 結果を書き出し
-write.csv(as.data.frame(resOrdered_B_vs_A), "DEG_res_B_vs_A.csv")
-write.csv(as.data.frame(resOrdered_C_vs_A), "DEG_res_C_vs_A.csv")
-write.csv(as.data.frame(resOrdered_C_vs_B), "DEG_res_C_vs_B.csv")
+write.csv(as.data.frame(resOrdered_B_vs_A), "./output_data/DEG_res_B_vs_A.csv")
+write.csv(as.data.frame(resOrdered_C_vs_A), "./output_data/DEG_res_C_vs_A.csv")
+write.csv(as.data.frame(resOrdered_C_vs_B), "./output_data/DEG_res_C_vs_B.csv")
 
 ```
 
@@ -107,8 +115,7 @@ write.csv(as.data.frame(resOrdered_C_vs_B), "DEG_res_C_vs_B.csv")
 normalized_counts <- counts(dds, normalized=TRUE)
 
 ## output
-output_filename <-  "normalized_counts.csv"
-write.csv(normalized_counts, output_filename)
+write.csv(normalized_counts, "./output_data/normalized_counts.csv")
 
 # 階層的クラスタリングや主成分分析に適して標準化データの出力
 
@@ -117,8 +124,7 @@ rld <- rlog(dds) # 分散を安定化
 normalized_rld <- assay(rld) # 変換されたデータを取得
 
 ## output
-output_filename <- "rlog_transformed.csv"
-write.csv(normalized_rld, output_filename)
+write.csv(normalized_rld, "./output_data/rlog_transformed.csv")
 
 ```
 
@@ -194,7 +200,7 @@ p <-  pheatmap(selected_data,
            show_rownames = FALSE)
 
 # pdfに保存
-ggsave("heatmap_output.pdf", plot = p, width = 10, height = 8)
+ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
 ```
 
 # principal component analysis
@@ -218,7 +224,7 @@ p <- plotPCA(rld, intgroup="con")  +
       theme_minimal()
 
 # pdfに保存
-ggsave("heatmap_output.pdf", plot = p, width = 10, height = 8)
+ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
 
 ```
 
@@ -248,7 +254,7 @@ p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$con)) +
       ggtitle("PCA Plot (PC1 vs PC3)")
 
 # pdfに保存
-ggsave("heatmap_output.pdf", plot = p, width = 10, height = 8)
+ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
 
 
 ```
@@ -295,7 +301,7 @@ write.csv(output_data, "ego_B_vs_A_up.csv")
 p <- plot_bar(ego_B_vs_A_up, "GO_B_vs_A_up")
 
 # pdfに保存
-ggsave("ego_B_vs_A_up_barplot.pdf", plot = p, width = 10, height = 8)
+ggsave("./output_data/ego_B_vs_A_up_barplot.pdf", plot = p, width = 10, height = 8)
 
 ```
 
@@ -362,13 +368,13 @@ allRes$adjPval <- adjustedPvals[match(allRes$GO.ID, names(adjustedPvals))]
 head(allRes)
 
 # 8. 結果をCSVに保存
-write.csv(allRes, "topGO_BP_B_vs_A.csv")
+write.csv(allRes, "./output_data/topGO_BP_B_vs_A.csv")
 
 # 9. 可視化（あんま使わない）
 showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = "all")  # 上位5つをGOツリー表示
 
 # 10. pdfに保存 ggsaveが使えない
-pdf("topGO_B_vs_A_tree.pdf", width = 10, height = 8)  # PDFデバイスを開く
+pdf("./output_data/topGO_B_vs_A_tree.pdf", width = 10, height = 8)  # PDFデバイスを開く
 showSigOfNodes(GOdata, score(resultFisher), firstSigNodes = 5, useInfo = "all")
 dev.off()  # デバイスを閉じる
 

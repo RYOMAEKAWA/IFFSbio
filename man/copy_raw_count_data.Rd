@@ -2,10 +2,10 @@
 % Please edit documentation in R/copy_raw_count_data.R
 \name{copy_raw_count_data}
 \alias{copy_raw_count_data}
-\title{Copy raw_count_data.csv to Working Directory}
+\title{Copy raw_count_data.csv to data folder in Working Directory}
 \usage{
 copy_raw_count_data()
 }
 \description{
-This function copies the raw_count_data.csv file from the package to the current working directory.
+This function copies the raw_count_data.csv file from the package to a 'data' folder in the current working directory.
 }
