@@ -12,19 +12,16 @@ params:
 - Rの基本パッケージには含まれていないパッケージをインストールする
 
 ```{r install packages}
-# # CRAN
-# install.packages("tidyverse")
-# 
-# # Bioconductor
-# if (!requireNamespace("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# BiocManager::install("topGO")
-# BiocManager::install("DESeq2")
-# BiocManager::install("clusterProfiler")
-# BiocManager::install("enrichplot")
-# BiocManager::install("org.Hs.eg.db")
-# BiocManager::install("Rgraphviz")
-# BiocManager::install("pheatmap")
+
+# CRANパッケージ
+install.packages(c("tidyverse", "pheatmap"))
+
+# Bioconductorパッケージ
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+BiocManager::install(c("DESeq2", "clusterProfiler", "org.Hs.eg.db", "enrichplot", "topGO", "Rgraphviz"))
+
 ```
 
 # read libaray (read package)
@@ -52,14 +49,6 @@ library(pheatmap)
 df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 df <- df[,-which(names(df)=="GO_info")]
 
-```
-
-# output用のデータ保存ディレクトリの作成
-
-```{r}
-  if (!dir.exists("output_data")) {
-    dir.create("output_data")
-  }
 ```
 
 # Differentially expressed genes
