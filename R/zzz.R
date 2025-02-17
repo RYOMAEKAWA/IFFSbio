@@ -11,6 +11,8 @@
 .onAttach <- function(libname, pkgname) {
   if (interactive()) {
     data("test_data", package = pkgname)
+    copy_raw_count_data()
+    copy_analysis()
     packageStartupMessage("IFFSbio loaded successfully!")
   }
 }
