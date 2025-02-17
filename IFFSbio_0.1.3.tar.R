@@ -35,7 +35,7 @@ usethis::use_package("pheatmap", type = "Suggests")
 
 
 # testデータを読み込む済みのデータとして格納
-test_data <- read.csv("./input_data/raw_count_data.csv", header  = T)
+test_data <- read.csv("./inst/input_data/raw_count_data.csv", header  = T)
 test_data <- test_data[,-which(names(test_data)=="GO_info")]
 usethis::use_data(test_data, overwrite = TRUE)
 
@@ -43,6 +43,6 @@ usethis::use_data(test_data, overwrite = TRUE)
 devtools::document()
 
 # tar.gzにbuildディレクトリ内にパッケージを作成
-devtools::build(path = "./build")
+#devtools::build(path = "./build")
 
 
