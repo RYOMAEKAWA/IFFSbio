@@ -284,7 +284,7 @@ ego_B_vs_A_up <- enrichGO(gene = rownames(DEG_B_vs_A_up),
 
 # data output
 output_data <- as.data.frame(ego_B_vs_A_up)
-write.csv(output_data, "ego_B_vs_A_up.csv")
+write.csv(output_data, "./output_data/ego_B_vs_A_up.csv")
 
 # plot output
 p <- plot_bar(ego_B_vs_A_up, "GO_B_vs_A_up")
