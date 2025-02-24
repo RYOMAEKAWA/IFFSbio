@@ -213,7 +213,7 @@ p <- plotPCA(rld, intgroup="con")  +
       theme_minimal()
 
 # pdfに保存
-ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
+ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)
 
 ```
 
@@ -231,7 +231,7 @@ summary(pca_res)
 outdata <- summary(pca_res)$importance
 
 # 出力
-write.csv(outdata, file = "pca_res.csv")
+write.csv(outdata, file = "./output_data/pca_res.csv")
 
 # PC3以降をプロット
 ## 例 PC1 vs PC3
@@ -243,7 +243,7 @@ p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$con)) +
       ggtitle("PCA Plot (PC1 vs PC3)")
 
 # pdfに保存
-ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
+ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)
 
 
 ```
