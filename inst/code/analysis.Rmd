@@ -1,7 +1,7 @@
 ---
 title: "analysis"
 author: "Ryo Maekawa"
-date: "2025-02-10"
+date: "2025-02-26"
 output: html_document
 params:
   reticulate.python: "" 
@@ -78,8 +78,9 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
   dds <- DESeq(dds)
 
 ## 結果を取得 & p valueでsorting
+  ## results()関数は通常の処理. lfcShrink()関数は低カウントの遺伝子や外れ値の影響を減らす処理（foldchangeのみ）に影響。
   res_B_vs_A <- results(dds, contrast = c("group", "B", "A"))
-  res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr") #低カウントの遺伝子や外れ値の影響を減らす
+  res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr") 
   resOrdered_B_vs_A <- res_B_vs_A[order(res_B_vs_A$pvalue),]
   
   res_C_vs_A <- results(dds, contrast = c("group", "C", "A"))
@@ -106,7 +107,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 
   data <- res_B_vs_A
   
-  EnhancedVolcano(data,
+  p <- EnhancedVolcano(data,
                   lab = rownames(data), # rep("",nrow(data))
                   x = 'log2FoldChange',
                   y = 'padj',  # pvalue ではなく、padj (FDR) を使用
@@ -123,6 +124,8 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
                   col = c('grey30', 'forestgreen', 'royalblue', 'red2'))
 
   
+# pdfに保存
+  ggsave("./output_data/volcano_plot.pdf", plot = p, width = 10, height = 8)
 ```
 
 # get normalized data by DESeq
@@ -158,6 +161,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 ```{r}
 
 # 分散が0の行を削除 --> 全てのサンプルで発現が同一 or 0の遺伝子を削除
+# 分散が0の行はエラーが出るため
 
   non_zero_var <- apply(normalized_rld, 1, var) != 0
   filtered_rld <- normalized_rld[non_zero_var, ]
@@ -234,31 +238,13 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 - DESeq2に組み込まれている関数`plotPCA`を用いるのが簡便。しかし、問題点として、`plotPCA`はPC1とPC2しか出力できない。PC3以降を可視化したい場合は、自分で`prcomp`を実行する必要がある。
 - plotPCAは `prcomp`を内部で用いているだけなので、自分で`prcomp`を実施すればPC3以降も可視できる。
 
-## DESeq2の組み込み関数`plotPCA`で実行
+## 関数`prcomp`で実施。
 
 ```{r}
 
-# DESeq2にはplotPCA()関数が用意されている. データはrldを使用。
-
-## pca 結果を取得
-  pca_data <- plotPCA(rld, intgroup="group", returnData=TRUE) 
-  print(pca_data)
-
-## pca plot
-  p <- plotPCA(rld, intgroup="group")  +
-        theme_minimal()
-
-# pdfに保存
-  ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)
-
-```
-
-## PC3以降が見たいとき -> plotPCAが内部で実行している`prcomp`を手作業で行う。
-
-```{r}
-
-# 手作業でprcompを実行
-  pca_res <- prcomp(t(normalized_rld)) # rlogデータでPCAを計算
+# 変動の大きい遺伝子のトップ500に限定（計算コスト軽減のため任意）
+  select <- order(rowVars(assay(rld)), decreasing = TRUE)[1:500]
+  pca_res <- prcomp(t(normalized_rld[select, ]), scale. = TRUE)
 
 # 主成分ごとの寄与率を確認
   summary(pca_res)
@@ -269,6 +255,18 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 # 出力
   write.csv(outdata, file = "./output_data/pca_res.csv")
 
+## PC1とPC2をプロット
+  p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$group)) +
+        geom_point(size=3) +
+        xlab(paste0("PC1: ", round(summary(pca_res)$importance[2, 1] * 100, 2), "% variance")) +
+        ylab(paste0("PC2: ", round(summary(pca_res)$importance[2, 2] * 100, 2), "% variance")) +
+        theme_minimal() +
+        ggtitle("PCA Plot (PC1 vs PC2)")
+
+# pdfに保存
+  ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)
+
+  
 # PC3以降をプロット
 ## 例 PC1 vs PC3
   p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$group)) +
@@ -279,8 +277,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
         ggtitle("PCA Plot (PC1 vs PC3)")
 
 # pdfに保存
-ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)
-
+  ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)
 
 ```
 
@@ -315,7 +312,7 @@ ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)
 ```{r cluster profiler}
 
 # 1. DEGの上昇遺伝子（B>A）を取得
-  DEG_B_vs_A_up <- resOrdered_B_vs_A[which(resOrdered_B_vs_A$log2FoldChange > 0 & resOrdered_B_vs_A$padj < 0.01), ]
+  DEG_B_vs_A_up <- resOrdered_B_vs_A[which(resOrdered_B_vs_A$log2FoldChange > 1 & resOrdered_B_vs_A$padj < 0.01), ]
 
 # 2. enrichGO()関数（clusterProfilerのライブラリに含まれる）でGO解析を実行
   ego_B_vs_A_up <- enrichGO(gene = rownames(DEG_B_vs_A_up), # 行名を遺伝子IDとして使用
