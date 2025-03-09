@@ -21,7 +21,7 @@ devtools::install_github("RYOMAEKAWA/IFFSbio")
 Alternatively, you can install a specific version from the Releases page:
 
 ```r
-install.packages("https://github.com/RYOMAEKAWA/IFFSbio/releases/download/v0.1.4/IFFSbio_0.1.4.tar.gz", repos = NULL, type = "source")
+install.packages("https://github.com/RYOMAEKAWA/IFFSbio/releases/download/v0.1.4/IFFSbio_0.2.1.tar.gz", repos = NULL, type = "source")
 ```
 
 ##  Directory Structure
