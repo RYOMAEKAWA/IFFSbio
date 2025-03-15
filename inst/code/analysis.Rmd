@@ -91,7 +91,6 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
   res_B_vs_C <- lfcShrink(dds, contrast = c("group", "B", "C"), type = "ashr")
   resOrdered_C_vs_B <- res_C_vs_B[order(res_C_vs_B$pvalue),]
 
-
 ## 結果を書き出し
   write.csv(as.data.frame(resOrdered_B_vs_A), "./output_data/DEG_res_B_vs_A.csv")
   write.csv(as.data.frame(resOrdered_C_vs_A), "./output_data/DEG_res_C_vs_A.csv")
