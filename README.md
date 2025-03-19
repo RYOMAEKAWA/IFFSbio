@@ -1,8 +1,8 @@
-# IFFSbio: Bioinformatics Test Package for IFFS Data
+# IFFSbio: Bioinformatics Test Package for IFFS hands-on seminar
 
 ##  Overview
 
-**IFFSbio** is an R package designed for bioinformatics analysis, particularly for **IFFS data**.  
+**IFFSbio** is an R package designed for bioinformatics analysis, particularly for **IFFS hands-on seminar**.  
 It provides various functions for:
 - **Data preprocessing**
 - **Differential expression analysis**
