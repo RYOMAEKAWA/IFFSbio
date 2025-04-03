@@ -2,10 +2,10 @@
 % Please edit documentation in R/copy_analysis.R
 \name{copy_analysis}
 \alias{copy_analysis}
-\title{Copy Analysis Rmd to Working Directory}
+\title{Copy Analysis Rmd and kihon.R to Working Directory}
 \usage{
 copy_analysis()
 }
 \description{
-This function copies the analysis.Rmd file from the package to the current working directory.
+This function copies the analysis.Rmd and kihon.R files from the package to the current working directory.
 }
