@@ -49,52 +49,129 @@ library(ashr) # DEGの収縮
 
 ```{r read data}
 
+# データの読み込み
 df <- read.csv("./input_data/raw_count_data.csv", header  = T)
+
+# データの冒頭を表示
+head(df)
+
+# エクセルのように可視化
+View(df)
+
+# データの構造確認
+dim(df) # 行数と列数を表示
+
+nrow(df) # 行数だけ表示　行 = row
+
+ncol(df) # 列数だけ表示　列 = column
+
+# 列名を表示
+colnames(df)
+
+
 
 ```
 
-# Differentially expressed genes
+# Differentially expressed genes : Raw count dataの説明（スライド）
 
-- DESeq2を用いたDEG（Differentially expressed genes: 発現変動遺伝子）の抽出
+- DESeq2を用いたDEG（Differentially expressed genes: 発現変動遺伝子）の抽出を行う
 - 最後に発現変動遺伝子のリストを出力
 
 ```{r}
-# data preparation
-
-## 10列目から18列目のカウントデータを抽出
+# 10列目から18列目のカウントデータを抽出
   count <- df[, 10:18]
+  
+  ## 冒頭部分を表示
+  head(count)
+  
+  ## 行数と列数を確認
+  dim(count)
+  
+  ## 行名にGeneIDを指定
   rownames(count) <- df$GeneID
+  
+  
+  ## head(count)でcountデータの確認をしてください。
+  
+  
+  ## dim(count)でcountデータの行数と列数を確認してください。
+  
+  
+  
+  
+## ERCCスパイクインを除外
+  count <- count[!grepl("^ERCC", rownames(count)), ]
+  
 
 ## サンプル名を確認
   colnames(count)
 
-## グループ情報を作成
+## グループ情報を作成：グループ間の発現差解析のための準備
   group <- data.frame(group = factor(c("A", "A", "A", "B", "B", "B", "C", "C", "C")))
+  
+  ## グループ情報を表示
+  print(group)
 
-## カウントデータとグループ情報をDESeqDataSetに変換
-  dds <- DESeqDataSetFromMatrix(countData = count, colData = group, design = ~ group)
+## カウントデータとグループ情報をDESeqDataSetに変換（DESeq2の規定の関数）
+  dds <- DESeqDataSetFromMatrix(countData = count, 
+                                colData = group, 
+                                design = ~ group)
+```
+
+
+## Differentially expressed genes : DESeq2による差次的発現解析
+- DESeq2を用いたDEG（Differentially expressed genes: 発現変動遺伝子）の抽出
+
+```{r}
 
 ## ddsでDESeq2による差次的発現解析を実行してddsに結果を格納
-  dds <- DESeq(dds)
+  dds <- DESeq(dds) # （DESeq2の規定の関数）
 
-## 結果を取得 & p valueでsorting
-  ## results()関数は通常の処理. lfcShrink()関数は低カウントの遺伝子や外れ値の影響を減らす処理（foldchangeのみ）に影響。
-  res_B_vs_A <- results(dds, contrast = c("group", "B", "A"))
-  res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr") 
+## 結果を取得
+  
+  ## results()関数: 通常の処理.（DESeq2の規定の関数）
+  
+  res_B_vs_A_MLE <- results(dds, contrast = c("group", "B", "A"))
+  
+  ## head()を使ってデータの冒頭を見てください。
+  
+  
+  
+  ## lfcShrink()関数: 低カウントの遺伝子や外れ値の影響を減らした分析.（DESeq2の規定の関数）
+  res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr")
+  
+  ## head()を使ってデータの冒頭を見てください
+  
+  
+  
+  ## lfcShrinkの結果をp-valueでsorting
   resOrdered_B_vs_A <- res_B_vs_A[order(res_B_vs_A$pvalue),]
   
-  res_C_vs_A <- results(dds, contrast = c("group", "C", "A"))
-  res_C_vs_A <- lfcShrink(dds, contrast = c("group", "C", "A"), type = "ashr")
-  resOrdered_C_vs_A <- res_C_vs_A[order(res_C_vs_A$pvalue),]
-  
-  res_C_vs_B <- results(dds, contrast = c("group", "C", "B"))
-  res_B_vs_C <- lfcShrink(dds, contrast = c("group", "B", "C"), type = "ashr")
-  resOrdered_C_vs_B <- res_C_vs_B[order(res_C_vs_B$pvalue),]
+  ## head()を使ってデータの冒頭を見てください
 
+  
+  
+  
+  
 ## 結果を書き出し
   write.csv(as.data.frame(resOrdered_B_vs_A), "./output_data/DEG_res_B_vs_A.csv")
-  write.csv(as.data.frame(resOrdered_C_vs_A), "./output_data/DEG_res_C_vs_A.csv")
-  write.csv(as.data.frame(resOrdered_C_vs_B), "./output_data/DEG_res_C_vs_B.csv")
+  
+  
+## res_C_vs_A_shrも同様に実行してください: result()は実施不要
+  
+
+  
+  
+  
+  
+## res_C_vs_B_shrも同様に実行してください（任意）
+
+  
+  
+  
+  
+  
+  
 
 ```
 ## volcano plot
@@ -122,6 +199,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
                   labSize = 3.0,
                   col = c('grey30', 'forestgreen', 'royalblue', 'red2'))
 
+  p
   
 # pdfに保存
   ggsave("./output_data/volcano_plot.pdf", plot = p, width = 10, height = 8)
@@ -130,28 +208,31 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 # get normalized data by DESeq
 
 - DESeq2を用いた標準化データを出力する。
-- DEGを計算するために使用した標準化データと、階層的クラスタリングや主成分分析を行うのに適した標準化データ（Log transformation data）の両方を出力する。
+- DEGを計算するために実際に使用した標準化データと、階層的クラスタリングや主成分分析を行うのに適した標準化データ（Log transformation data）の両方をそれぞれ出力する。
 
 ```{r}
 
-# DEG計算に用いた標準化データの出力
+# DEG計算に用いた標準化データの出力　元々のraw countデータを正規化して出力したもの. 
 
   ## calculate counts
   normalized_counts <- counts(dds, normalized=TRUE)
   
   ## output
   write.csv(normalized_counts, "./output_data/normalized_counts.csv")
+  
 
-# 階層的クラスタリングや主成分分析に適した標準化データの出力
+# 階層的クラスタリングや主成分分析に適した形の標準化データの出力
+# 分散を安定化させてlog変換。微小遺伝子の値が大きく出ないように定数をプラスしてlog変換。
 
   ## calculate count
-  rld <- rlog(dds) # 分散を安定化
+  rld <- rlog(dds) 
   normalized_rld <- assay(rld) # 変換されたデータを取得
   
   ## output
   write.csv(normalized_rld, "./output_data/rlog_transformed_counts.csv")
 
 ```
+
 
 # 階層的クラスタリング（hierarchical clustering）
 
@@ -162,9 +243,13 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 # 分散が0の行を削除 --> 全てのサンプルで発現が同一 or 0の遺伝子を削除
 # 分散が0の行はエラーが出るため
 
-  non_zero_var <- apply(normalized_rld, 1, var) != 0
+  ## 行ごとの分散を計算して、分散が0ではない行をTRUEで検出
+  non_zero_var <- apply(normalized_rld, 1, var) != 0  # !は「ではない」の意味
+
+  ## 分散が0ではない行だけを選択
   filtered_rld <- normalized_rld[non_zero_var, ]
 
+  
 
 # 計算コスト軽減のためdataを削減（5000行のみ取得）
   set.seed(123)  # 再現性確保のためのシード設定
@@ -178,7 +263,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
   dist_matrix <- dist(t(selected_data))  # 転置してサンプルごとの距離を計算
 
 ## 階層的クラスタリングを実行
-  hc <- hclust(dist_matrix, method = "complete")  # ward.D average; scalingなし
+  hc <- hclust(dist_matrix, method = "ward.D")  # 他にも方法はあり. complete, average, etc.
 
 ## plot
   plot(hc)
@@ -222,8 +307,8 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
              scale = "row",           # 遺伝子ごとにスケール調整
              annotation_col = annotation_col,  # 複数アノテーションを適用
              annotation_colors = annotation_colors,  # カラー設定
-             clustering_distance_rows = "euclidean",
-             clustering_distance_cols = "euclidean",
+             clustering_distance_rows = "euclidean", # 距離の計算方法
+             clustering_distance_cols = "euclidean", # 距離の計算方法
              clustering_method = "ward.D", # complete, average, etc.
              show_rownames = FALSE)
 
@@ -234,16 +319,17 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 # principal component analysis
 - 	高次元の説明変数を低次元に圧縮する方法の一つ。遺伝子発現データに基づいて、サンプル間の分散を最もよく説明する新しい軸（主成分: Principal component）を抽出する。つまり、説明変数の数を減らし、データ構造を把握・可視化しやすくする。
 - 階層的クラスタリングと同様に`Log transformation Data`を用いる。
-- DESeq2に組み込まれている関数`plotPCA`を用いるのが簡便。しかし、問題点として、`plotPCA`はPC1とPC2しか出力できない。PC3以降を可視化したい場合は、自分で`prcomp`を実行する必要がある。
-- plotPCAは `prcomp`を内部で用いているだけなので、自分で`prcomp`を実施すればPC3以降も可視できる。
 
 ## 関数`prcomp`で実施。
 
 ```{r}
 
 # 変動の大きい遺伝子のトップ500に限定（計算コスト軽減のため任意）
-  select <- order(rowVars(assay(rld)), decreasing = TRUE)[1:500]
-  pca_res <- prcomp(t(normalized_rld[select, ]), scale. = TRUE)
+  select <- order(rowVars(normalized_rld), decreasing = TRUE)[1:500]
+  selected_data <- normalized_rld[select, ]
+
+# PCAを実行: prcomp()関数を使用
+  pca_res <- prcomp(t(selected_data), scale. = TRUE)
 
 # 主成分ごとの寄与率を確認
   summary(pca_res)
@@ -253,6 +339,9 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 
 # 出力
   write.csv(outdata, file = "./output_data/pca_res.csv")
+  
+# 各サンプルの結果はどこにある？
+  pca_res$x
 
 ## PC1とPC2をプロット
   p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$group)) +
@@ -262,6 +351,9 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
         theme_minimal() +
         ggtitle("PCA Plot (PC1 vs PC2)")
 
+  # 表示
+  p
+  
 # pdfに保存
   ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)
 
@@ -275,32 +367,12 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
         theme_minimal() +
         ggtitle("PCA Plot (PC1 vs PC3)")
 
+  # 表示
+  p
+  
 # pdfに保存
   ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)
 
-```
-
-
-# define function
-
-- 同じ処理を繰り返す場合は、関数を定義しておくと便利. コードを短くできる。
-
-```{r plot_bar}
-# barplotを描画するための関数
-
-  # df: barplotを描画するデータフレーム
-  # title: グラフのタイトル
-
-  plot_bar <- function(df, title){
-    title <- title
-    barplot(df, showCategory = 20, title = title) +
-    theme(
-      axis.text.x = element_text(size = 6),  # X軸ラベルのフォントサイズ
-      axis.text.y = element_text(size = 6),  # Y軸ラベルのフォントサイズ
-      axis.title.x = element_text(size = 10),  # X軸タイトルのフォントサイズ
-      axis.title.y = element_text(size = 10)   # Y軸タイトルのフォントサイズ
-    )
-  }
 ```
 
 
@@ -311,9 +383,10 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 ```{r cluster profiler}
 
 # 1. DEGの上昇遺伝子（B>A）を取得
-  DEG_B_vs_A_up <- resOrdered_B_vs_A[which(resOrdered_B_vs_A$log2FoldChange > 1 & resOrdered_B_vs_A$padj < 0.01), ]
+  DEG_B_vs_A_up <- resOrdered_B_vs_A[which(resOrdered_B_vs_A$log2FoldChange > 1 & 
+                                             resOrdered_B_vs_A$padj < 0.01), ]
 
-# 2. enrichGO()関数（clusterProfilerのライブラリに含まれる）でGO解析を実行
+# 2. enrichGO()関数（clusterProfilerのライブラリに含まれる関数）でGO解析を実行
   ego_B_vs_A_up <- enrichGO(gene = rownames(DEG_B_vs_A_up), # 行名を遺伝子IDとして使用
                         OrgDb = org.Hs.eg.db,
                         keyType = "ENSEMBL",  # Ensembl IDを指定
@@ -322,7 +395,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
                         qvalueCutoff = 0.01,
                         readable = TRUE)
   
-  # 何のライブラリの関数だったか混乱を避けるために `clusterProfiler::enrichGO()` とすることも有用
+  
 
 # 3. 結果をego_B_vs_A_upから出力
   output_data <- as.data.frame(ego_B_vs_A_up)
@@ -330,9 +403,24 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 
 # 4. barplotを描画
   p <- plot_bar(ego_B_vs_A_up, "GO_B_vs_A_up")
-
+  p
+  
 # 5. pdfに保存
   ggsave("./output_data/ego_B_vs_A_up_barplot.pdf", plot = p, width = 10, height = 8)
+
+```
+
+# 結局何をやっているか
+
+```{r}
+
+# 2×2表を作成
+mat <- matrix(c(10, 490, 40, 19460), nrow = 2,
+              dimnames = list(DEG = c("DEG", "nonDEG"),
+                              GOterm = c("In_GO", "Not_in_GO")))
+
+# Fisher's Exact Test
+fisher.test(mat)
 
 ```
 
@@ -357,6 +445,7 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
   	•	冗長性を抑えつつ、重要なGO termも維持できるため、最もよく使われる。
   	
 ```{r topGO}
+
 # 1. 遺伝子リストを作成
   geneList <- as.vector(rownames(DEG_B_vs_A_up))  # 行名を遺伝子リストとして使用. 
                                                   # Ensembl IDの遺伝子リスト.
@@ -377,14 +466,14 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
                 annot = annFUN.org, mapping = "org.Hs.eg.db", ID = "ENSEMBL")
 
 
-# 5. 解析を実行
+# 5. 解析を実行: この時点で多重検定の補正は行われていない。
   resultFisher <- runTest(GOdata, algorithm = "weight01", statistic = "fisher")
 
-# 6. すべてのGO termを取得
+# 6. 補正のため、すべてのGO termを取得
   allGOterms <- usedGO(GOdata)  # 使用された全てのGO termを取得. つまり母数。
 
-# 7. すべてのp値を取得
-  allPvals <- score(resultFisher)[allGOterms]  # 全てのGO termのp値を取得
+# 7. 結果からp値だけを取得
+  allPvals <- score(resultFisher)[allGOterms]  # 使用した全てのGO termのp値を取得
 
 # 8. p.adjust()でadjusted p valueを算出
   adjustedPvals <- p.adjust(allPvals, method = "BH")  # Benjamini-Hochberg法で補正
@@ -414,6 +503,27 @@ df <- read.csv("./input_data/raw_count_data.csv", header  = T)
 
 
 
+# define function
+
+- 同じ処理を繰り返す場合は、関数を定義しておくと便利. コードを短くできる。
+
+```{r plot_bar}
+# barplotを描画するための関数
+
+  # df: barplotを描画するデータフレーム
+  # title: グラフのタイトル
+
+  plot_bar <- function(df, title){
+    title <- title
+    barplot(df, showCategory = 20, title = title) +
+    theme(
+      axis.text.x = element_text(size = 6),  # X軸ラベルのフォントサイズ
+      axis.text.y = element_text(size = 6),  # Y軸ラベルのフォントサイズ
+      axis.title.x = element_text(size = 10),  # X軸タイトルのフォントサイズ
+      axis.title.y = element_text(size = 10)   # Y軸タイトルのフォントサイズ
+    )
+  }
+```
 
 
 
