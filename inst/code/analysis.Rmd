@@ -352,9 +352,10 @@ geneList_DEG_B_vs_A_up <- rownames(DEG_B_vs_A_up)  # 行名を遺伝子IDとし�
 
   ## 行ごとの分散を計算して、分散が0ではない行をTRUEで検出
   non_zero_var <- apply(normalized_rld, 1, var) != 0  # !は「ではない」の意味
+  filtered_rld <- normalized_rld[non_zero_var, ]  # 分散が0ではない行だけを選択
 
-  ## 分散が0ではない行だけを選択
-  var_order <- order(apply(filtered_rld, 1, var), decreasing = TRUE)  # 分散の大きい順に並べ替え
+  ## 分散が大きい順に並べ替え
+  var_order <- order(apply(filtered_rld, 1, var), decreasing = TRUE)  
   
   ## 分散が大きい500遺伝子を選択
   selected_data <- filtered_rld[var_order[1:500], ]  # 上位500個の遺伝子を選択
