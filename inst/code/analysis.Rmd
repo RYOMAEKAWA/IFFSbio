@@ -133,12 +133,18 @@ colnames(df)
   ## head()を使ってデータの冒頭を見てください。
   head(res_B_vs_A_result)
   
+  ## [100:106,]部分を出してください
+  res_B_vs_A_result[100:106,]
+  
   
   ## lfcShrink()関数: 低カウントの遺伝子や外れ値の影響を減らした分析.（DESeq2の規定の関数）
   res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr")
   
   ## head()を使ってデータの冒頭を見てください
   head(res_B_vs_A)
+  
+  ## [100:106,]部分を出してください
+  res_B_vs_A[100:106,]
 ```
 
 ## lfcShrinkの結果をp-valueでsorting
