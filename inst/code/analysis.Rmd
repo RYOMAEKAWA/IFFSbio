@@ -1,7 +1,7 @@
 ---
 title: "analysis"
 author: "Ryo Maekawa"
-date: "2025-02-26"
+date: "2025-04-10"
 output: html_document
 params:
   reticulate.python: "" 
@@ -13,16 +13,33 @@ params:
 
 ```{r install packages}
 
-# CRANパッケージ
+# CRANパッケージのインストール
 install.packages(c("tidyverse", "pheatmap", "ashr"))
 
-# Bioconductorパッケージ
+# Bioconductorパッケージのインストール
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
-BiocManager::install(c("DESeq2", "clusterProfiler", "org.Hs.eg.db", "enrichplot", "topGO", "Rgraphviz", "EnhancedVolcano"))
+
+BiocManager::install(c(
+  "DESeq2",
+  "clusterProfiler",
+  "org.Hs.eg.db",
+  "enrichplot",
+  "topGO",
+  "Rgraphviz",
+  "EnhancedVolcano"
+))
+```
+
+# もし途中で「BiocParallelが必要です」と表示された場合は、次を実行
+
+```{r}
+
+BiocManager::install("BiocParallel", type = "source")
 
 ```
+
 
 # read libaray (read package)
 
@@ -50,25 +67,19 @@ library(ashr) # DEGの収縮
 ```{r read data}
 
 # データの読み込み
-df <- read.csv("./input_data/raw_count_data.csv", header  = T)
+df <- read.csv("./input_data/raw_count_data.csv", header = TRUE)
+df <- df[!grepl("^ERCC", df$GeneID), ]  # ERCCスパイクインを除外
 
-# データの冒頭を表示
+# データの首頭を表示
 head(df)
 
-# エクセルのように可視化
-View(df)
-
 # データの構造確認
-dim(df) # 行数と列数を表示
-
-nrow(df) # 行数だけ表示　行 = row
-
-ncol(df) # 列数だけ表示　列 = column
+dim(df)    # 行数と列数を表示
+nrow(df)   # 行数だけ表示
+ncol(df)   # 列数だけ表示
 
 # 列名を表示
 colnames(df)
-
-
 
 ```
 
@@ -78,44 +89,31 @@ colnames(df)
 - 最後に発現変動遺伝子のリストを出力
 
 ```{r}
+
 # 10列目から18列目のカウントデータを抽出
   count <- df[, 10:18]
-  
-  ## 冒頭部分を表示
-  head(count)
-  
-  ## 行数と列数を確認
-  dim(count)
-  
-  ## 行名にGeneIDを指定
-  rownames(count) <- df$GeneID
-  
-  
-  ## head(count)でcountデータの確認をしてください。
-  
-  
-  ## dim(count)でcountデータの行数と列数を確認してください。
-  
-  
-  
-  
-## ERCCスパイクインを除外
-  count <- count[!grepl("^ERCC", rownames(count)), ]
-  
 
-## サンプル名を確認
+# 行名にGeneIDを指定
+  rownames(count) <- df$GeneID
+
+# 首頭部分と行数・列数を表示
+  head(count)
+  dim(count)
+
+# サンプル名を確認
   colnames(count)
 
-## グループ情報を作成：グループ間の発現差解析のための準備
+# グループ情報を作成：グループ間の発現差解析のための準備
   group <- data.frame(group = factor(c("A", "A", "A", "B", "B", "B", "C", "C", "C")))
-  
-  ## グループ情報を表示
+
+# グループ情報を表示
   print(group)
 
-## カウントデータとグループ情報をDESeqDataSetに変換（DESeq2の規定の関数）
-  dds <- DESeqDataSetFromMatrix(countData = count, 
-                                colData = group, 
+# カウントデータとグループ情報をDESeqDataSetに変換 (DESeq2のデータセットに変換)
+  dds <- DESeqDataSetFromMatrix(countData = count,
+                                colData = group,
                                 design = ~ group)
+
 ```
 
 
@@ -123,7 +121,6 @@ colnames(df)
 - DESeq2を用いたDEG（Differentially expressed genes: 発現変動遺伝子）の抽出
 
 ```{r}
-
 ## ddsでDESeq2による差次的発現解析を実行してddsに結果を格納
   dds <- DESeq(dds) # （DESeq2の規定の関数）
 
@@ -131,30 +128,29 @@ colnames(df)
   
   ## results()関数: 通常の処理.（DESeq2の規定の関数）
   
-  res_B_vs_A_MLE <- results(dds, contrast = c("group", "B", "A"))
+  res_B_vs_A_result <- results(dds, contrast = c("group", "B", "A"))
   
   ## head()を使ってデータの冒頭を見てください。
-  
+  head(res_B_vs_A_result)
   
   
   ## lfcShrink()関数: 低カウントの遺伝子や外れ値の影響を減らした分析.（DESeq2の規定の関数）
   res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr")
   
   ## head()を使ってデータの冒頭を見てください
-  
-  
-  
-  ## lfcShrinkの結果をp-valueでsorting
+  head(res_B_vs_A)
+```
+
+## lfcShrinkの結果をp-valueでsorting
+- lfcShrinkの結果をp-valueでソートして、上位の遺伝子を確認する
+
+```{r}
+
   resOrdered_B_vs_A <- res_B_vs_A[order(res_B_vs_A$pvalue),]
   
   ## head()を使ってデータの冒頭を見てください
-
+  head(resOrdered_B_vs_A)
   
-  
-  
-  
-## 結果を書き出し
-  write.csv(as.data.frame(resOrdered_B_vs_A), "./output_data/DEG_res_B_vs_A.csv")
   
   
 ## res_C_vs_A_shrも同様に実行してください: result()は実施不要
@@ -164,9 +160,8 @@ colnames(df)
   
   
   
-## res_C_vs_B_shrも同様に実行してください（任意）
+## res_C_vs_B_shrも同様に実行してください
 
-  
   
   
   
@@ -203,10 +198,115 @@ colnames(df)
   
 # pdfに保存
   ggsave("./output_data/volcano_plot.pdf", plot = p, width = 10, height = 8)
+  
 ```
 
-# get normalized data by DESeq
+# CSVファイルへの書き出し
+- DEGの結果をCSVファイルに書き出す
 
+```{r}
+
+## 結果を書き出し
+  write.csv(as.data.frame(resOrdered_B_vs_A), "./output_data/DEG_res_B_vs_A.csv")
+
+```
+
+
+# GO analysis
+
+## clusterProfilerを用いる方法
+
+```{r cluster profiler}
+# 1. DEGの上昇遺伝子（B > A）を取得
+DEG_B_vs_A_up <- resOrdered_B_vs_A[
+  which(resOrdered_B_vs_A$log2FoldChange > 1 & resOrdered_B_vs_A$padj < 0.01),
+]
+
+head(DEG_B_vs_A_up)   # 最初の6行を見る
+nrow(DEG_B_vs_A_up)   # 上昇遺伝子の数を確認
+
+geneList_DEG_B_vs_A_up <- rownames(DEG_B_vs_A_up)  # 行名を遺伝子IDとして取り出す
+
+
+# 2. enrichGO()関数（clusterProfilerのライブラリに含まれる関数）でGO解析を実行
+  ego_B_vs_A_up <- enrichGO(gene = rownames(DEG_B_vs_A_up), # 行名を遺伝子IDとして使用
+                        OrgDb = org.Hs.eg.db,
+                        keyType = "ENSEMBL",  # Ensembl IDを指定
+                        ont = "BP",  # Biological Process
+                        pAdjustMethod = "BH",
+                        qvalueCutoff = 0.01,
+                        readable = TRUE)
+  
+# 3. 結果をego_B_vs_A_upから出力
+  output_data <- as.data.frame(ego_B_vs_A_up)
+  View(output_data)
+  write.csv(output_data, "./output_data/ego_B_vs_A_up.csv")
+
+# 4. barplotを描画
+  p <- barplot(ego_B_vs_A_up, showCategory = 20, title = "GO_B_vs_A_up") +
+    theme(
+      axis.text.x = element_text(size = 6),   # X軸ラベルのフォントサイズ
+      axis.text.y = element_text(size = 6),   # Y軸ラベルのフォントサイズ
+      axis.title.x = element_text(size = 10), # X軸タイトルのフォントサイズ
+      axis.title.y = element_text(size = 10)  # Y軸タイトルのフォントサイズ
+    )
+  
+  # pdfに保存
+    ggsave("./output_data/ego_B_vs_A_up_barplot.pdf", plot = p, width = 10, height = 8) # defaultはインチ
+    
+# 5. dotplotを描画
+  p <- dotplot(ego_B_vs_A_up,
+    x = "GeneRatio",     # 横軸を GeneRatio に
+    color = "p.adjust",  # 色を adjusted p-value に
+    showCategory = 20,   # 表示するGO term数
+    font.size = 10       # フォントサイズ
+  ) +
+    ggtitle("Enrichment analysis: B vs A")
+
+  p # 表示
+
+# pdfに保存
+  ggsave("./output_data/ego_B_vs_A_up_dotplot.pdf", plot = p, width = 210, height = 297, units = "mm")  # mmを指定
+  
+```
+
+# 複数サンプルを比較する場合
+
+```{r cluster profiler}
+
+# それぞれの群の上昇遺伝子を取得してlist形式でまとめる
+  geneList <- list(
+    Group_B_over_A = rownames(DEG_B_vs_A_up),
+    Group_C_over_A = rownames(DEG_C_vs_A_up) #,
+    # Group_C_over_B = rownames(DEG_C_vs_B_up)
+  )
+
+# GroupごとにenrichGOを実行
+  compare_res <- compareCluster(
+    geneCluster = geneList,
+    fun = "enrichGO",
+    OrgDb = org.Hs.eg.db,
+    keyType = "ENSEMBL",   # Ensembl IDを指定
+    ont = "BP",            # Biological Processを対象に
+    pAdjustMethod = "BH",
+    pvalueCutoff = 0.05,
+    qvalueCutoff = 0.2,
+    readable = TRUE
+  )
+
+# dotplotで並べて描画
+  p <- dotplot(compare_res,
+               showCategory = 20,
+               font.size = 12) +
+    ggtitle("GO Enrichment Comparison across Groups")
+
+# pdfに保存
+  ggsave("./output_data/compare_GO_dotplot.pdf", plot = p, width = 10, height = 12)
+
+```
+
+
+# 標準化されたデータを出力する
 - DESeq2を用いた標準化データを出力する。
 - DEGを計算するために実際に使用した標準化データと、階層的クラスタリングや主成分分析を行うのに適した標準化データ（Log transformation data）の両方をそれぞれ出力する。
 
@@ -215,8 +315,9 @@ colnames(df)
 # DEG計算に用いた標準化データの出力　元々のraw countデータを正規化して出力したもの. 
 
   ## calculate counts
-  normalized_counts <- counts(dds, normalized=TRUE)
-  
+  normalized_counts <- counts(dds, normalized = TRUE)
+  View(normalized_counts)
+
   ## output
   write.csv(normalized_counts, "./output_data/normalized_counts.csv")
   
@@ -247,30 +348,25 @@ colnames(df)
   non_zero_var <- apply(normalized_rld, 1, var) != 0  # !は「ではない」の意味
 
   ## 分散が0ではない行だけを選択
-  filtered_rld <- normalized_rld[non_zero_var, ]
-
+  var_order <- order(apply(filtered_rld, 1, var), decreasing = TRUE)  # 分散の大きい順に並べ替え
   
+  ## 分散が大きい500遺伝子を選択
+  selected_data <- filtered_rld[var_order[1:500], ]  # 上位500個の遺伝子を選択
 
-# 計算コスト軽減のためdataを削減（5000行のみ取得）
-  set.seed(123)  # 再現性確保のためのシード設定
-  random_genes <- sample(rownames(filtered_rld), 5000)  # 5000行をランダムに選択(seedは固定）
-  selected_data <- filtered_rld[random_genes, ]  
-
-
-
-# 一般的な階層的クラスタリング --> ここまでできたら
-## サンプル間の距離を計算
-  dist_matrix <- dist(t(selected_data))  # 転置してサンプルごとの距離を計算
-
-## 階層的クラスタリングを実行
-  hc <- hclust(dist_matrix, method = "ward.D")  # 他にも方法はあり. complete, average, etc.
-
-## plot
-  plot(hc)
-
-
-# pheatmapを用いた階層的クラスタリング --> これができたら自由度高い!
-
+# pheatmapを用いた階層的クラスタリング
+  # plot heatmap
+  pheatmap(selected_data,
+    scale = "row",                      # 遺伝子ごとにスケール調整
+    clustering_distance_rows = "euclidean", # 距離の計算方法（行）
+    clustering_distance_cols = "euclidean", # 距離の計算方法（列）
+    clustering_method = "ward.D",        # クラスタリング方法 (complete, averageなども可)
+    show_rownames = FALSE,               # 遺伝子名を表示しない
+    show_colnames = TRUE,                # サンプル名を表示
+    fontsize = 12,                       # 全体の文字を少し大きく
+    fontsize_col = 14                    # サンプル名だけさらに大きく
+  )
+  
+# アノテーションデータありのheatmapを作る
 ## 列のアノテーションデータの作成:順番はgroupの順番と対応!
   annotation_col <- data.frame(Agent_use = c("Control", 
                                              "Control", 
@@ -302,7 +398,7 @@ colnames(df)
     any_status = c("Nagoya" = "lightblue", "Yamaguchi" = "red", "Nara" = "lightgreen")
   )
 
-# plot heatmap
+# plot heatmap（アノテーションデータ付き）
   p <-  pheatmap(selected_data,
              scale = "row",           # 遺伝子ごとにスケール調整
              annotation_col = annotation_col,  # 複数アノテーションを適用
@@ -314,115 +410,136 @@ colnames(df)
 
 # pdfに保存
   ggsave("./output_data/heatmap_output.pdf", plot = p, width = 10, height = 8)
+  
 ```
 
+
 # principal component analysis
-- 	高次元の説明変数を低次元に圧縮する方法の一つ。遺伝子発現データに基づいて、サンプル間の分散を最もよく説明する新しい軸（主成分: Principal component）を抽出する。つまり、説明変数の数を減らし、データ構造を把握・可視化しやすくする。
+
+- PCA（主成分分析）は、データの次元を削減するための手法であり、特に高次元データの可視化や解析に役立つ。
 - 階層的クラスタリングと同様に`Log transformation Data`を用いる。
 
 ## 関数`prcomp`で実施。
 
 ```{r}
 
-# 変動の大きい遺伝子のトップ500に限定（計算コスト軽減のため任意）
-  select <- order(rowVars(normalized_rld), decreasing = TRUE)[1:500]
-  selected_data <- normalized_rld[select, ]
+# 変動の大きい遺伝子のトップ500に限定
+  select <- order(rowVars(filtered_rld), decreasing = TRUE)[1:500]
+  selected_data <- filtered_rld[select, ]
 
 # PCAを実行: prcomp()関数を使用
   pca_res <- prcomp(t(selected_data), scale. = TRUE)
 
-# 主成分ごとの寄与率を確認
-  summary(pca_res)
-
-# 寄与率（importanceとして算出されている）を保存
-  outdata <- summary(pca_res)$importance
-
-# 出力
-  write.csv(outdata, file = "./output_data/pca_res.csv")
-  
 # 各サンプルの結果はどこにある？
   pca_res$x
 
-## PC1とPC2をプロット
-  p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$group)) +
-        geom_point(size=3) +
-        xlab(paste0("PC1: ", round(summary(pca_res)$importance[2, 1] * 100, 2), "% variance")) +
-        ylab(paste0("PC2: ", round(summary(pca_res)$importance[2, 2] * 100, 2), "% variance")) +
-        theme_minimal() +
-        ggtitle("PCA Plot (PC1 vs PC2)")
+# PC1とPC2をプロット
+  p <- ggplot(data.frame(pca_res$x), aes(PC1, PC2, color = colData(dds)$group)) +
+    geom_point(size = 8) +
+    xlab(paste0("PC1: ", round(summary(pca_res)$importance[2, 1] * 100, 2), "% variance")) +
+    ylab(paste0("PC2: ", round(summary(pca_res)$importance[2, 2] * 100, 2), "% variance")) +
+    theme_minimal() +
+    ggtitle("PCA Plot (PC1 vs PC2)")
 
-  # 表示
+# 表示
   p
-  
-# pdfに保存
-  ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)
 
-  
-# PC3以降をプロット
-## 例 PC1 vs PC3
-  p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color=colData(dds)$group)) +
-        geom_point(size=3) +
-        xlab(paste0("PC1: ", round(summary(pca_res)$importance[2, 1] * 100, 2), "% variance")) +
-        ylab(paste0("PC3: ", round(summary(pca_res)$importance[2, 3] * 100, 2), "% variance")) +
-        theme_minimal() +
-        ggtitle("PCA Plot (PC1 vs PC3)")
-
-  # 表示
-  p
-  
 # pdfに保存
-  ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)
+  ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)  # defaultはインチ
+
+
 
 ```
 
-
-# GO analysis
-
-## clusterProfilerを用いる方法
-
-```{r cluster profiler}
-
-# 1. DEGの上昇遺伝子（B>A）を取得
-  DEG_B_vs_A_up <- resOrdered_B_vs_A[which(resOrdered_B_vs_A$log2FoldChange > 1 & 
-                                             resOrdered_B_vs_A$padj < 0.01), ]
-
-# 2. enrichGO()関数（clusterProfilerのライブラリに含まれる関数）でGO解析を実行
-  ego_B_vs_A_up <- enrichGO(gene = rownames(DEG_B_vs_A_up), # 行名を遺伝子IDとして使用
-                        OrgDb = org.Hs.eg.db,
-                        keyType = "ENSEMBL",  # Ensembl IDを指定
-                        ont = "BP",  # Biological Process
-                        pAdjustMethod = "BH",
-                        qvalueCutoff = 0.01,
-                        readable = TRUE)
-  
-  
-
-# 3. 結果をego_B_vs_A_upから出力
-  output_data <- as.data.frame(ego_B_vs_A_up)
-  write.csv(output_data, "./output_data/ego_B_vs_A_up.csv")
-
-# 4. barplotを描画
-  p <- plot_bar(ego_B_vs_A_up, "GO_B_vs_A_up")
-  p
-  
-# 5. pdfに保存
-  ggsave("./output_data/ego_B_vs_A_up_barplot.pdf", plot = p, width = 10, height = 8)
-
-```
-
-# 結局何をやっているか
+# 第1主成分と第3主成分でプロットする場合
 
 ```{r}
 
-# 2×2表を作成
-mat <- matrix(c(10, 490, 40, 19460), nrow = 2,
-              dimnames = list(DEG = c("DEG", "nonDEG"),
-                              GOterm = c("In_GO", "Not_in_GO")))
+## 例 PC1 vs PC3
+p <- ggplot(data.frame(pca_res$x), aes(PC1, PC3, color = colData(dds)$group)) +
+  geom_point(size = 8) +
+  xlab(paste0("PC1: ", round(summary(pca_res)$importance[2, 1] * 100, 2), "% variance")) +
+  ylab(paste0("PC3: ", round(summary(pca_res)$importance[2, 3] * 100, 2), "% variance")) +
+  theme_minimal() +
+  ggtitle("PCA Plot (PC1 vs PC3)")
 
-# Fisher's Exact Test
-fisher.test(mat)
+# 表示
+p
+
+# pdfに保存
+ggsave("./output_data/pca_pc1_pc3_output.pdf", plot = p, width = 10, height = 8)  # defaultはインチ
 
 ```
+
+# 主成分の寄与度をbarplotで表示
+- PCAの結果から、各主成分の寄与度を棒グラフで表示する
+
+```{r}
+
+# PCAの結果からimportance（寄与率など）を取り出し
+importance_data <- summary(pca_res)$importance
+
+# 寄与率（Proportion of Variance）だけを抜き出し
+proportion_var <- importance_data["Proportion of Variance", ]
+
+# 寄与率を棒グラフにする
+barplot(proportion_var,
+  main = "Proportion of Variance by Principal Components",
+  ylab = "Proportion of Variance",
+  xlab = "Principal Components",
+  col = "gray",
+  las = 2  # x軸ラベルを縦向きにして見やすくする
+)
+
+```
+
+# KEGG pathway解析
+
+## DEGの上昇遺伝子を用いてKEGG pathway解析を行う
+
+```{r}
+
+# geneList_DEG_B_vs_A_up はEnsembl IDのリストなのでEntrezIDに変換
+gene_df <- bitr(geneList_DEG_B_vs_A_up,
+                fromType = "ENSEMBL",
+                toType = "ENTREZID",
+                OrgDb = org.Hs.eg.db)
+
+# 変換後に Entrez ID を使って enrichKEGG を実行
+ekegg <- enrichKEGG(gene = gene_df$ENTREZID,
+                    organism = "hsa",           # ヒトの場合 "hsa"
+                    pAdjustMethod = "BH",
+                    pvalueCutoff = 0.05,
+                    qvalueCutoff = 0.2)
+# 結果を表示
+dotplot(ekegg)
+
+```
+## 複数のKEGGの結果を並べて表示
+
+```{r}
+
+# 元の遺伝子リスト（グループごとにEnsembl IDの文字列ベクトル）
+geneList <- list(
+  Group_B_over_A = rownames(DEG_B_vs_A_up),
+  Group_C_over_A = rownames(DEG_C_vs_A_up)
+)
+
+# 各グループごとに、Ensembl ID を Entrez ID に変換
+geneList_conv <- lapply(geneList, function(ens_ids) {
+  out <- bitr(ens_ids,
+              fromType = "ENSEMBL", # Ensembl IDを指定
+              toType = "ENTREZID", # Entrez IDに変換
+              OrgDb = org.Hs.eg.db # ヒトの遺伝子データベースを指定
+              ) 
+  return(out$ENTREZID) # 変換後のEntrez IDを返す
+})
+
+# geneList_conv は、各グループごとのEntrez IDのベクトルが格納されたリストになります
+print(geneList_conv)
+
+```
+
 
 ## topGO
 
@@ -503,27 +620,6 @@ fisher.test(mat)
 
 
 
-# define function
-
-- 同じ処理を繰り返す場合は、関数を定義しておくと便利. コードを短くできる。
-
-```{r plot_bar}
-# barplotを描画するための関数
-
-  # df: barplotを描画するデータフレーム
-  # title: グラフのタイトル
-
-  plot_bar <- function(df, title){
-    title <- title
-    barplot(df, showCategory = 20, title = title) +
-    theme(
-      axis.text.x = element_text(size = 6),  # X軸ラベルのフォントサイズ
-      axis.text.y = element_text(size = 6),  # Y軸ラベルのフォントサイズ
-      axis.title.x = element_text(size = 10),  # X軸タイトルのフォントサイズ
-      axis.title.y = element_text(size = 10)   # Y軸タイトルのフォントサイズ
-    )
-  }
-```
 
 
 

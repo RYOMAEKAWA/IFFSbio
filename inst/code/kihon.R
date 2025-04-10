@@ -23,90 +23,56 @@ print(b2)
 
 
 
-
-# Matrix: 2D Array
-c1 <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, ncol = 3)
-
-# c2に好きなmatrixを作っていれてください。
-
-
-
-
 # データフレーム
 
-d1 <- data.frame(Name = c("A", "B", "C"))
-print(d1)
-d2 <- data.frame(Name = c("Bob", "Alice", "Ken", "Hiroko", "Bill"),
-                 Bw = c(40, 50, 60, 90, 70),
-                 Ht = c(156, 187, 168, 145, 172)
-                 )
-print(d2)
+Name = c("Bob", "Alice", "Ken", "Hiroko", "Bill", "Hanako")
+Bw   = c(40, 50, 60, 90, 70, 55)
+Ht   = c(156, 187, 168, 145, 172, 156)
 
-# d2に性別)を追加してください
-## ヒント　Gender = c()を使ってください
+df <- data.frame(Name, Bw, Ht)
+
+print(df)
+View(df)
+
+# dfに性別を追加してください
+## ヒント　Gender = c("M","F","M","F","M","F")を使ってください
 
 
 
-# dataframeの取り扱い
-## - データ解析の基本単位　
-## - 実際には自分で作るというよりcsvやxlsxを読み込んで使用することが多い
 
 ## dataframeからのデータの抽出
 
-d2[1:2, ]
-d2[, 1]
-d2$Name   #$の入力の後、tabキーを押すと列名が表示される
-d2$Score
-d2[1, 2]
+df[1:2, ] # df[行, 列]
+df[, 1]
+df$Name   #$の入力の後、tabキーを押すと列名が表示される
+df[1, 2]
 
-# d2から3-4行目と2-3列目を抽出してください
-
+# dfから3-4行目と2-3列目を抽出してください
 
 
 
 
-# csvファイルの読み込み
-df <- read.csv("./input_data/raw_count_data.csv")
+# 関数を使ってみる
 
-## データの確認
-head(df)
-head(df$GeneID)
-head(df$TranscriptID)
-df[1:2,2:3]
-
-
-
-
+head(df, 3)      # 上から3行を表示
+mean(df$Bw)      # 平均
+sd(df$Bw)        # 標準偏差
+dim(df)          # 行数と列数を表示
+nrow(df)         # 行数を表示
+ncol(df)         # 列数を表示
+rownames(df)     # 行名を表示
+colnames(df)     # 列名を表示
 
 
-# 関数とは
-mean(b1)
-sd(b1)
-plot(b1,b2)
-plot(d2$Bw, d2$Ht)
-t.test(b1,b2, paired = FALSE)
+# t検定
 
+## 男性の身長だけを取り出す
+male_ht <- df$Ht[df$Gender == "M"]  # 見て何となく理解できる
 
+## 女性の身長だけを取り出す
+female_ht <- df$Ht[df$Gender == "F"]
 
-## dfでChrの列に何が入っているか確認してください
-names(df)
-table(df$Chr)
-unique(df$Chr)
+## 男性と女性の身長をt検定
+t.test(male_ht, female_ht, paired = FALSE)
 
-
-
-
-
-
-
-
-# libraryの確認
-## インストール（最初の一回だけ）
-install.packages("ggplot2")
-
-## libraryの読み込み　（解析を開いたら毎回実施）
-library(ggplot2)
-
-## 含まれる関数をみたいなら
-ls("package:ggplot2")
 

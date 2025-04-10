@@ -13,7 +13,7 @@ usethis::use_description(
   fields = list(
     Title = "IFFS Bioinformatics Test Package",
     Description = "A test package for bioinformatics analysis using IFFS data.",
-    Version = "0.2.2",
+    Version = "0.3.1",
     Author = "Your Name [RYO MAEKAWA]",
     Maintainer = "Your Name <ryomaekawa@outlook.jp>",
     License = "MIT",
