@@ -28,7 +28,8 @@ BiocManager::install(c(
   "enrichplot",
   "topGO",
   "Rgraphviz",
-  "EnhancedVolcano"
+  "EnhancedVolcano",
+  "ashr"
 ))
 ```
 
