@@ -32,7 +32,7 @@ Ht   <- c(156, 187, 168, 145, 172, 156)
 df <- data.frame(Name, Bw, Ht)
 
 print(df)
-view(df)
+View(df)
 
 # dfに性別を追加
 Gender <- c("M","F","M","F","M","F")
