@@ -1,7 +1,7 @@
 ---
 title: "analysis"
 author: "Ryo Maekawa"
-date: "2025-04-10"
+date: "2025-04-11"
 output: html_document
 params:
   reticulate.python: "" 
@@ -12,6 +12,9 @@ params:
 - Rの基本パッケージには含まれていないパッケージをインストールする
 
 ```{r install packages}
+
+# リポジトリ（CRAN + Bioconductor）の設定
+options(repos = BiocManager::repositories())
 
 # CRANパッケージのインストール
 install.packages(c("tidyverse", "pheatmap", "ashr"))
@@ -28,8 +31,7 @@ BiocManager::install(c(
   "enrichplot",
   "topGO",
   "Rgraphviz",
-  "EnhancedVolcano",
-  "ashr"
+  "EnhancedVolcano"
 ))
 ```
 
