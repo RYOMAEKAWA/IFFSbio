@@ -3,7 +3,7 @@
 # Scalar
 
 a1 <- 1
-print(a)
+print(a1)
 
 # a2に好きな数字や文字を与えてください。
 
@@ -25,18 +25,19 @@ print(b2)
 
 # データフレーム
 
-Name = c("Bob", "Alice", "Ken", "Hiroko", "Bill", "Hanako")
-Bw   = c(40, 50, 60, 90, 70, 55)
-Ht   = c(156, 187, 168, 145, 172, 156)
+Name <- c("Bob", "Alice", "Ken", "Hiroko", "Bill", "Hanako")
+Bw   <- c(40, 50, 60, 90, 70, 55)
+Ht   <- c(156, 187, 168, 145, 172, 156)
 
 df <- data.frame(Name, Bw, Ht)
 
 print(df)
-View(df)
+view(df)
 
-# dfに性別を追加してください
-## ヒント　Gender = c("M","F","M","F","M","F")を使ってください
-
+# dfに性別を追加
+Gender <- c("M","F","M","F","M","F")
+df <- data.frame(df, Gender)
+print(df)
 
 
 
@@ -64,7 +65,7 @@ rownames(df)     # 行名を表示
 colnames(df)     # 列名を表示
 
 
-# t検定
+# t検定：オプション
 
 ## 男性の身長だけを取り出す
 male_ht <- df$Ht[df$Gender == "M"]  # 見て何となく理解できる

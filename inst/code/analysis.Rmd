@@ -13,33 +13,61 @@ params:
 
 ```{r install packages}
 
-# リポジトリ（CRAN + Bioconductor）の設定
-options(repos = BiocManager::repositories())
+# OSに応じたライブラリパスの設定
+if (.Platform$OS.type == "windows") {
+  .libPaths(file.path(Sys.getenv("USERPROFILE"), "Documents", "R", paste0("win-library/", R.version$major, ".", R.version$minor)))
+} else {
+  .libPaths(file.path(Sys.getenv("HOME"), "Library", "R", paste0(R.version$major, ".", R.version$minor), "library"))
+}
+
 
 # CRANパッケージのインストール
-install.packages(c("tidyverse", "pheatmap", "ashr"))
+cran_packages <- c("tidyverse", "pheatmap", "ashr")
+
+install_if_missing <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+}
+
+invisible(lapply(cran_packages, install_if_missing))
 
 # Bioconductorパッケージのインストール
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
   install.packages("BiocManager")
 }
+options(repos = BiocManager::repositories())
 
-BiocManager::install(c(
+bioc_packages <- c(
   "DESeq2",
+  "GenomeInfoDb",
   "clusterProfiler",
   "org.Hs.eg.db",
   "enrichplot",
   "topGO",
   "Rgraphviz",
   "EnhancedVolcano"
-))
+)
+
+install_bioc_if_missing <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    BiocManager::install(pkg)
+  }
+}
+
+invisible(lapply(bioc_packages, install_bioc_if_missing))
+
 ```
 
-# もし途中で「BiocParallelが必要です」と表示された場合は、次を実行
+# もし途中でエラーが出たら以下を実行
 
 ```{r}
 
+# もし途中で「BiocParallelが必要です」と表示された場合は、次を実行
 BiocManager::install("BiocParallel", type = "source")
+
+# もし途中で「GenomeInfoDbDataが必要です」と表示された場合は、次を実行
+BiocManager::install("GenomeInfoDbData", type = "source")
 
 ```
 
@@ -71,7 +99,7 @@ library(ashr) # DEGの収縮
 
 # データの読み込み
 df <- read.csv("./input_data/raw_count_data.csv", header = TRUE)
-df <- df[!grepl("^ERCC", df$GeneID), ]  # ERCCスパイクインを除外
+df <- df[!grepl("^ERCC", df$GeneID), ]  # 人口遺伝子のERCCスパイクインを除外
 
 # データの首頭を表示
 head(df)
