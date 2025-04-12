@@ -51,7 +51,7 @@ invisible(lapply(bioc_packages, install_bioc_if_missing))
 
 ```
 
-# もし途中でエラーが出たら以下を実行
+# もしインスｓトール途中や下記のlibary読み込みでエラーが出たら、以下を参考にして追加パッケージをインストールしてください。
 
 ```{r}
 
@@ -60,6 +60,9 @@ BiocManager::install("BiocParallel", type = "source")
 
 # もし途中で「GenomeInfoDbDataが必要です」と表示された場合は、次を実行
 BiocManager::install("GenomeInfoDbData", type = "source")
+
+# もし途中で「GO.dbが必要です」のような表示が出た場合は、次を実行
+BiocManager::install("GO.db", type = "source")
 
 ```
 
