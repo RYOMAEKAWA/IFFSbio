@@ -152,17 +152,6 @@ colnames(df)
 
 ## 結果を取得
   
-  ## results()関数: 通常の処理.（DESeq2の規定の関数）
-  
-  res_B_vs_A_result <- results(dds, contrast = c("group", "B", "A"))
-  
-  ## head()を使ってデータの冒頭を見てください。
-  head(res_B_vs_A_result)
-  
-  ## [100:106,]部分を出してください
-  res_B_vs_A_result[100:106,]
-  
-  
   ## lfcShrink()関数: 低カウントの遺伝子や外れ値の影響を減らした分析.（DESeq2の規定の関数）
   res_B_vs_A <- lfcShrink(dds, contrast = c("group", "B", "A"), type = "ashr")
   
@@ -344,16 +333,6 @@ geneList_DEG_B_vs_A_up <- rownames(DEG_B_vs_A_up)  # 行名を遺伝子IDとし�
 
 ```{r}
 
-# DEG計算に用いた標準化データの出力　元々のraw countデータを正規化して出力したもの. 
-
-  ## calculate counts
-  normalized_counts <- counts(dds, normalized = TRUE)
-  View(normalized_counts)
-
-  ## output
-  write.csv(normalized_counts, "./output_data/normalized_counts.csv")
-  
-
 # 階層的クラスタリングや主成分分析に適した形の標準化データの出力
 # 分散を安定化させてlog変換。微小遺伝子の値が大きく出ないように定数をプラスしてlog変換。
 
@@ -474,13 +453,8 @@ geneList_DEG_B_vs_A_up <- rownames(DEG_B_vs_A_up)  # 行名を遺伝子IDとし�
     theme_minimal() +
     ggtitle("PCA Plot (PC1 vs PC2)")
 
-# 表示
-  p
-
 # pdfに保存
   ggsave("./output_data/pca_pc1_pc2_output.pdf", plot = p, width = 10, height = 8)  # defaultはインチ
-
-
 
 ```
 
